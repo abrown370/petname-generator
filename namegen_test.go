@@ -2,6 +2,7 @@ package namegen
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -57,11 +58,118 @@ func TestFormat(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := format(tc.style, tc.a, tc.b)
+			got := format(tc.style, "", tc.a, tc.b)
 			if got != tc.want {
 				t.Fatalf("format(%v, %q, %q) = %q, want %q", tc.style, tc.a, tc.b, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestFormatCustomSeparator(t *testing.T) {
+	got := format(Custom, ".", "red", "fox")
+	if want := "red.fox"; got != want {
+		t.Fatalf("format(Custom, %q, ...) = %q, want %q", ".", got, want)
+	}
+}
+
+func TestFormatThreeWords(t *testing.T) {
+	cases := []struct {
+		name  string
+		style Style
+		sep   string
+		words []string
+		want  string
+	}{
+		{"kebab", Kebab, "", []string{"brave", "swift", "falcon"}, "brave-swift-falcon"},
+		{"snake", Snake, "", []string{"brave", "swift", "falcon"}, "brave_swift_falcon"},
+		{"camel", Camel, "", []string{"brave", "swift", "falcon"}, "braveSwiftFalcon"},
+		{"custom", Custom, "_", []string{"brave", "swift", "falcon"}, "brave_swift_falcon"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := format(tc.style, tc.sep, tc.words...)
+			if got != tc.want {
+				t.Fatalf("format(%v, %q, %v) = %q, want %q", tc.style, tc.sep, tc.words, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSetWordCount(t *testing.T) {
+	g, err := NewWithWords([]string{"red", "blue", "green"}, []string{"fox"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+
+	if err := g.SetWordCount(4); !errors.Is(err, ErrInvalidWordCount) {
+		t.Fatalf("SetWordCount(4) = %v, want %v", err, ErrInvalidWordCount)
+	}
+
+	if err := g.SetWordCount(3); err != nil {
+		t.Fatalf("SetWordCount(3) = %v, want nil", err)
+	}
+
+	for i := 0; i < 50; i++ {
+		name := g.Generate()
+		parts := strings.Split(name, "-")
+		if len(parts) != 3 {
+			t.Fatalf("Generate() = %q, want 3 hyphen-separated words", name)
+		}
+		if parts[0] == parts[1] {
+			t.Fatalf("Generate() = %q, want the two adjectives to differ", name)
+		}
+	}
+}
+
+func TestSetWordCountThreeWithSingleAdjective(t *testing.T) {
+	g, err := NewWithWords([]string{"red"}, []string{"fox", "owl"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	if err := g.SetWordCount(3); err != nil {
+		t.Fatalf("SetWordCount(3) = %v, want nil", err)
+	}
+
+	name := g.Generate()
+	if name != "red-red-fox" && name != "red-red-owl" {
+		t.Fatalf("Generate() = %q, want red-red-fox or red-red-owl", name)
+	}
+}
+
+func TestSetCustomSeparator(t *testing.T) {
+	g, err := NewWithWords([]string{"red"}, []string{"fox"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	g.SetCustomSeparator("::")
+
+	if got, want := g.Generate(), "red::fox"; got != want {
+		t.Fatalf("Generate() = %q, want %q", got, want)
+	}
+}
+
+func TestUniqueWithThreeWords(t *testing.T) {
+	g, err := NewWithWords([]string{"red", "blue"}, []string{"fox", "owl"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	if err := g.SetWordCount(3); err != nil {
+		t.Fatalf("SetWordCount(3) = %v, want nil", err)
+	}
+
+	// 2 adjectives give 2*1=2 ordered distinct pairs, times 2 nouns = 4.
+	if _, err := g.Unique(5); !errors.Is(err, ErrNotEnoughCombinations) {
+		t.Fatalf("Unique(5) = %v, want %v", err, ErrNotEnoughCombinations)
+	}
+
+	names, err := g.Unique(4)
+	if err != nil {
+		t.Fatalf("Unique(4) = %v, want nil", err)
+	}
+	if len(names) != 4 {
+		t.Fatalf("Unique(4) returned %d names, want 4", len(names))
 	}
 }
 

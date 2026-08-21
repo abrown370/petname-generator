@@ -82,8 +82,28 @@ g.SetStyle(namegen.Space) // brave falcon
 g.SetStyle(namegen.Camel) // braveFalcon
 ```
 
+For a separator that isn't one of the built-in styles, use
+`SetCustomSeparator`:
+
+```go
+g.SetCustomSeparator(".") // brave.falcon
+```
+
+### Three-word names
+
+Call `SetWordCount(3)` to get an extra adjective in front of the noun, e.g.
+`brave-swift-falcon`. The two adjectives are guaranteed distinct as long as
+the adjective list has more than one entry. `Unique` accounts for the larger
+combination space automatically.
+
+```go
+if err := g.SetWordCount(3); err != nil {
+	panic(err)
+}
+fmt.Println(g.Generate()) // e.g. "brave-swift-falcon"
+```
+
 ## Status
 
 Early. The word lists are small and English-only for now, and there's no
-support yet for three-word names or excluding specific words at generation
-time.
+support yet for excluding specific words or patterns at generation time.

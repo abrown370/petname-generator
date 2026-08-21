@@ -23,11 +23,14 @@ var (
 	// non-positive count.
 	ErrInvalidCount = errors.New("namegen: count must be positive")
 	// ErrNotEnoughCombinations is returned by Unique when the requested
-	// count exceeds len(adjectives) * len(nouns).
+	// count exceeds the number of combinations the word lists can produce.
 	ErrNotEnoughCombinations = errors.New("namegen: requested more unique names than possible combinations")
+	// ErrInvalidWordCount is returned by SetWordCount for any value other
+	// than 2 or 3.
+	ErrInvalidWordCount = errors.New("namegen: word count must be 2 or 3")
 )
 
-// Style controls how the two words in a generated name are joined.
+// Style controls how the words in a generated name are joined.
 type Style int
 
 const (
@@ -40,15 +43,19 @@ const (
 	// Camel joins words as "braveFalcon". It assumes ASCII word lists;
 	// multi-byte runes at the start of a word are not handled specially.
 	Camel
+	// Custom joins words with the separator set via SetCustomSeparator.
+	Custom
 )
 
-// Generator produces names by combining a random adjective with a random
+// Generator produces names by combining random adjectives with a random
 // noun. The zero value is not usable; construct one with New, NewSeeded, or
 // NewWithWords.
 type Generator struct {
 	adjectives []string
 	nouns      []string
 	style      Style
+	separator  string
+	wordCount  int
 	rng        *rand.Rand
 }
 
@@ -96,6 +103,7 @@ func NewWithWords(adjectives, nouns []string) (*Generator, error) {
 		adjectives: adjCopy,
 		nouns:      nounCopy,
 		style:      Kebab,
+		wordCount:  2,
 		rng:        rand.New(rand.NewSource(time.Now().UnixNano())),
 	}, nil
 }
@@ -105,11 +113,57 @@ func (g *Generator) SetStyle(s Style) {
 	g.style = s
 }
 
+// SetCustomSeparator switches future names to the Custom style, joined with
+// sep instead of one of the built-in separators, e.g. SetCustomSeparator(".")
+// produces "brave.falcon".
+func (g *Generator) SetCustomSeparator(sep string) {
+	g.separator = sep
+	g.style = Custom
+}
+
+// SetWordCount configures how many words a generated name contains. Only 2
+// (adjective-noun, the default) and 3 (adjective-adjective-noun) are
+// supported. The two adjectives in a three-word name are distinct whenever
+// the adjective list has more than one entry.
+func (g *Generator) SetWordCount(n int) error {
+	if n != 2 && n != 3 {
+		return fmt.Errorf("%w: got %d", ErrInvalidWordCount, n)
+	}
+	g.wordCount = n
+	return nil
+}
+
 // Generate returns a single random name.
 func (g *Generator) Generate() string {
-	a := g.adjectives[g.rng.Intn(len(g.adjectives))]
-	n := g.nouns[g.rng.Intn(len(g.nouns))]
-	return format(g.style, a, n)
+	return format(g.style, g.separator, g.pick()...)
+}
+
+// pick returns the words for one name, in output order.
+func (g *Generator) pick() []string {
+	if g.wordCount == 3 {
+		first := g.adjectives[g.rng.Intn(len(g.adjectives))]
+		second := first
+		if len(g.adjectives) > 1 {
+			for second == first {
+				second = g.adjectives[g.rng.Intn(len(g.adjectives))]
+			}
+		}
+		return []string{first, second, g.nouns[g.rng.Intn(len(g.nouns))]}
+	}
+	return []string{g.adjectives[g.rng.Intn(len(g.adjectives))], g.nouns[g.rng.Intn(len(g.nouns))]}
+}
+
+// combinationCount returns the number of distinct names the current word
+// lists and word count can produce.
+func (g *Generator) combinationCount() int {
+	if g.wordCount == 3 {
+		pairs := 1
+		if len(g.adjectives) > 1 {
+			pairs = len(g.adjectives) * (len(g.adjectives) - 1)
+		}
+		return pairs * len(g.nouns)
+	}
+	return len(g.adjectives) * len(g.nouns)
 }
 
 // GenerateN returns count random names. Names may repeat; use Unique if
@@ -132,7 +186,7 @@ func (g *Generator) Unique(count int) ([]string, error) {
 	if count <= 0 {
 		return nil, ErrInvalidCount
 	}
-	total := len(g.adjectives) * len(g.nouns)
+	total := g.combinationCount()
 	if count > total {
 		return nil, fmt.Errorf("%w: requested %d, have %d", ErrNotEnoughCombinations, count, total)
 	}
@@ -150,17 +204,29 @@ func (g *Generator) Unique(count int) ([]string, error) {
 	return names, nil
 }
 
-func format(style Style, a, b string) string {
-	a = strings.ToLower(strings.TrimSpace(a))
-	b = strings.ToLower(strings.TrimSpace(b))
+// format joins words according to style, using sep only when style is
+// Custom.
+func format(style Style, sep string, words ...string) string {
+	clean := make([]string, len(words))
+	for i, w := range words {
+		clean[i] = strings.ToLower(strings.TrimSpace(w))
+	}
 	switch style {
 	case Snake:
-		return a + "_" + b
+		return strings.Join(clean, "_")
 	case Space:
-		return a + " " + b
+		return strings.Join(clean, " ")
 	case Camel:
-		return a + strings.ToUpper(b[:1]) + b[1:]
+		var b strings.Builder
+		b.WriteString(clean[0])
+		for _, w := range clean[1:] {
+			b.WriteString(strings.ToUpper(w[:1]))
+			b.WriteString(w[1:])
+		}
+		return b.String()
+	case Custom:
+		return strings.Join(clean, sep)
 	default: // Kebab
-		return a + "-" + b
+		return strings.Join(clean, "-")
 	}
 }
