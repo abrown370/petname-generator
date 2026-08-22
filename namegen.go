@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -131,6 +132,61 @@ func (g *Generator) SetWordCount(n int) error {
 	}
 	g.wordCount = n
 	return nil
+}
+
+// ExcludeWords removes any adjective or noun that exactly matches one of the
+// given words (case-insensitive, whitespace-trimmed). It leaves the word
+// lists unchanged and returns ErrEmptyWordList if the removal would empty
+// out the adjective or noun list.
+func (g *Generator) ExcludeWords(words ...string) error {
+	exclude := make(map[string]struct{}, len(words))
+	for _, w := range words {
+		exclude[strings.ToLower(strings.TrimSpace(w))] = struct{}{}
+	}
+	keep := func(w string) bool {
+		_, excluded := exclude[strings.ToLower(w)]
+		return !excluded
+	}
+	return g.applyWordFilter(keep)
+}
+
+// ExcludePattern removes any adjective or noun matching the given regular
+// expression, as accepted by the regexp package. It leaves the word lists
+// unchanged and returns an error if pattern fails to compile, or
+// ErrEmptyWordList if the removal would empty out the adjective or noun
+// list.
+func (g *Generator) ExcludePattern(pattern string) error {
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return fmt.Errorf("namegen: invalid exclude pattern: %w", err)
+	}
+	return g.applyWordFilter(func(w string) bool { return !re.MatchString(w) })
+}
+
+// applyWordFilter replaces the adjective and noun lists with the subset for
+// which keep returns true. It only commits the change if both resulting
+// lists are non-empty, so a filter that would exhaust one list leaves the
+// generator in its previous, usable state.
+func (g *Generator) applyWordFilter(keep func(string) bool) error {
+	newAdj := filterWords(g.adjectives, keep)
+	newNouns := filterWords(g.nouns, keep)
+	if len(newAdj) == 0 || len(newNouns) == 0 {
+		return ErrEmptyWordList
+	}
+	g.adjectives = newAdj
+	g.nouns = newNouns
+	return nil
+}
+
+// filterWords returns the entries of words for which keep returns true.
+func filterWords(words []string, keep func(string) bool) []string {
+	out := make([]string, 0, len(words))
+	for _, w := range words {
+		if keep(w) {
+			out = append(out, w)
+		}
+	}
+	return out
 }
 
 // Generate returns a single random name.

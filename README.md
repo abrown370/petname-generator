@@ -89,6 +89,24 @@ For a separator that isn't one of the built-in styles, use
 g.SetCustomSeparator(".") // brave.falcon
 ```
 
+### Excluding words
+
+Drop specific words, or anything matching a regular expression, from the
+word lists before generating names:
+
+```go
+g := namegen.New()
+g.ExcludeWords("wandering", "wry") // exact match, case-insensitive
+
+if err := g.ExcludePattern("^q"); err != nil {
+	panic(err)
+}
+```
+
+Both calls modify the generator's word lists directly. If a call would
+empty out the adjective or noun list, it returns `ErrEmptyWordList` and
+leaves the lists as they were.
+
 ### Three-word names
 
 Call `SetWordCount(3)` to get an extra adjective in front of the noun, e.g.
@@ -105,5 +123,4 @@ fmt.Println(g.Generate()) // e.g. "brave-swift-falcon"
 
 ## Status
 
-Early. The word lists are small and English-only for now, and there's no
-support yet for excluding specific words or patterns at generation time.
+Early. The word lists are small and English-only for now.

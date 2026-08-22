@@ -244,6 +244,56 @@ func TestUnique(t *testing.T) {
 	}
 }
 
+func TestExcludeWords(t *testing.T) {
+	g, err := NewWithWords([]string{"red", "blue", "green"}, []string{"fox", "owl"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+
+	if err := g.ExcludeWords(" RED ", "green"); err != nil {
+		t.Fatalf("ExcludeWords() = %v, want nil", err)
+	}
+	for i := 0; i < 50; i++ {
+		name := g.Generate()
+		if strings.Contains(name, "red") || strings.Contains(name, "green") {
+			t.Fatalf("Generate() = %q, want excluded words to never appear", name)
+		}
+	}
+
+	if err := g.ExcludeWords("blue"); !errors.Is(err, ErrEmptyWordList) {
+		t.Fatalf("ExcludeWords(\"blue\") = %v, want %v", err, ErrEmptyWordList)
+	}
+	// The failed call above must not have touched the adjective list.
+	name := g.Generate()
+	if !strings.HasPrefix(name, "blue-") {
+		t.Fatalf("Generate() = %q, want a failed ExcludeWords to leave the list unchanged", name)
+	}
+}
+
+func TestExcludePattern(t *testing.T) {
+	g, err := NewWithWords([]string{"red", "blue", "green"}, []string{"fox", "owl"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+
+	if err := g.ExcludePattern("^(red|blue)$"); err != nil {
+		t.Fatalf("ExcludePattern() = %v, want nil", err)
+	}
+	for i := 0; i < 50; i++ {
+		if name := g.Generate(); !strings.HasPrefix(name, "green-") {
+			t.Fatalf("Generate() = %q, want only green- names", name)
+		}
+	}
+
+	if err := g.ExcludePattern("["); err == nil {
+		t.Fatal("ExcludePattern(\"[\") = nil, want a compile error")
+	}
+
+	if err := g.ExcludePattern(".*"); !errors.Is(err, ErrEmptyWordList) {
+		t.Fatalf("ExcludePattern(\".*\") = %v, want %v", err, ErrEmptyWordList)
+	}
+}
+
 func TestSeededGeneratorsAreReproducible(t *testing.T) {
 	a := NewSeeded(42)
 	b := NewSeeded(42)
