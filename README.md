@@ -71,6 +71,16 @@ g, err := namegen.NewWithWords(
 )
 ```
 
+### Themed word lists
+
+For a different vocabulary without building your own lists, use one of the
+built-in themes:
+
+```go
+g, err := namegen.NewWithTheme(namegen.ThemeSpace) // e.g. "lunar-comet"
+g, err := namegen.NewWithTheme(namegen.ThemeTech)  // e.g. "cached-daemon"
+```
+
 ### Formatting
 
 Names default to kebab-case (`brave-falcon`). Other separators are
