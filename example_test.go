@@ -8,6 +8,25 @@ import (
 // Single-word lists make these examples deterministic: with only one
 // adjective and one noun to choose from, the RNG has nothing to decide.
 
+func ExampleNewWithWords() {
+	g, err := NewWithWords([]string{"brave"}, []string{"falcon"})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(g.Generate())
+	// Output: brave-falcon
+}
+
+func ExampleNewWithTheme() {
+	g, err := NewWithTheme(ThemeSpace)
+	if err != nil {
+		panic(err)
+	}
+	name := g.Generate()
+	fmt.Println(name != "")
+	// Output: true
+}
+
 func ExampleGenerator_Generate() {
 	g, err := NewWithWords([]string{"brave"}, []string{"falcon"})
 	if err != nil {
