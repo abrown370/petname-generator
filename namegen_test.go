@@ -317,6 +317,33 @@ func TestSeededGeneratorsAreReproducible(t *testing.T) {
 	}
 }
 
+func TestSeedMakesCustomGeneratorReproducible(t *testing.T) {
+	a, err := NewWithWords([]string{"solar", "lunar", "stellar"}, []string{"orbit", "comet", "nebula"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	b, err := NewWithWords([]string{"solar", "lunar", "stellar"}, []string{"orbit", "comet", "nebula"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	a.Seed(7)
+	b.Seed(7)
+
+	gotA, err := a.GenerateN(10)
+	if err != nil {
+		t.Fatalf("GenerateN() = %v", err)
+	}
+	gotB, err := b.GenerateN(10)
+	if err != nil {
+		t.Fatalf("GenerateN() = %v", err)
+	}
+	for i := range gotA {
+		if gotA[i] != gotB[i] {
+			t.Fatalf("name %d differs between same-seed generators: %q != %q", i, gotA[i], gotB[i])
+		}
+	}
+}
+
 func TestDefaultWordListsAreValid(t *testing.T) {
 	if len(DefaultAdjectives) == 0 || len(DefaultNouns) == 0 {
 		t.Fatal("default word lists must not be empty")

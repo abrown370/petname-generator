@@ -5,13 +5,27 @@ instead of `x7f2a9c1`. Useful anywhere you need an identifier a person can
 say out loud, remember, and tell apart from the last one: temporary cloud
 resources, seed data in a demo script, default names for a game character.
 
-There's no CLI here, just a package to import.
-
 ## Install
 
 ```
 go get github.com/abrown370/petname-generator
 ```
+
+## CLI
+
+For one-off names from a shell, without writing a Go program:
+
+```
+go install github.com/abrown370/petname-generator/cmd/namegen@latest
+
+namegen                          # brave-falcon
+namegen -n 5                     # five names, one per line
+namegen -theme space -words 3    # lunar-stellar-comet
+namegen -style snake -seed 42    # deterministic output
+namegen -unique -n 20            # 20 names, no duplicates
+```
+
+Run `namegen -h` for the full flag list.
 
 ## Usage
 

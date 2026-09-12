@@ -77,8 +77,17 @@ func New() *Generator {
 // the same seed produce the same sequence of names.
 func NewSeeded(seed int64) *Generator {
 	g := New()
-	g.rng = rand.New(rand.NewSource(seed))
+	g.Seed(seed)
 	return g
+}
+
+// Seed resets the generator's random sequence to be fully determined by
+// seed. Two generators seeded with the same value produce the same sequence
+// of names from that point on. Useful for making a themed or custom-word
+// generator (built via NewWithTheme or NewWithWords) reproducible, since
+// those constructors don't take a seed directly.
+func (g *Generator) Seed(seed int64) {
+	g.rng = rand.New(rand.NewSource(seed))
 }
 
 // NewWithWords returns a Generator backed by custom word lists. Both lists
