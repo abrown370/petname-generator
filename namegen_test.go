@@ -344,6 +344,62 @@ func TestSeedMakesCustomGeneratorReproducible(t *testing.T) {
 	}
 }
 
+func TestPluralize(t *testing.T) {
+	cases := []struct {
+		word string
+		want string
+	}{
+		{"falcon", "falcons"},
+		{"fox", "foxes"},
+		{"buzz", "buzzes"},
+		{"church", "churches"},
+		{"marsh", "marshes"},
+		{"berry", "berries"},
+		{"day", "days"},
+		{"cache", "caches"},
+		{"ibis", "ibises"},
+		{"oasis", "oases"},
+		{" Falcon ", "falcons"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.word, func(t *testing.T) {
+			if got := pluralize(tc.word); got != tc.want {
+				t.Fatalf("pluralize(%q) = %q, want %q", tc.word, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestSetPluralNoun(t *testing.T) {
+	g, err := NewWithWords([]string{"red"}, []string{"fox", "oasis"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	g.SetPluralNoun(true)
+
+	for i := 0; i < 50; i++ {
+		name := g.Generate()
+		if name != "red-foxes" && name != "red-oases" {
+			t.Fatalf("Generate() = %q, want red-foxes or red-oases", name)
+		}
+	}
+}
+
+func TestSetPluralNounWithThreeWords(t *testing.T) {
+	g, err := NewWithWords([]string{"red", "blue"}, []string{"fox"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	if err := g.SetWordCount(3); err != nil {
+		t.Fatalf("SetWordCount(3) = %v, want nil", err)
+	}
+	g.SetPluralNoun(true)
+
+	if got, want := g.Generate(), "red-blue-foxes"; got != want && got != "blue-red-foxes" {
+		t.Fatalf("Generate() = %q, want %q or %q", got, want, "blue-red-foxes")
+	}
+}
+
 func TestDefaultWordListsAreValid(t *testing.T) {
 	if len(DefaultAdjectives) == 0 || len(DefaultNouns) == 0 {
 		t.Fatal("default word lists must not be empty")

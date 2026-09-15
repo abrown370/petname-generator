@@ -57,6 +57,7 @@ type Generator struct {
 	style      Style
 	separator  string
 	wordCount  int
+	pluralNoun bool
 	rng        *rand.Rand
 }
 
@@ -143,6 +144,15 @@ func (g *Generator) SetWordCount(n int) error {
 	return nil
 }
 
+// SetPluralNoun switches the trailing noun to its plural form, e.g.
+// "brave-falcons" instead of "brave-falcon". Pluralization follows the
+// common English suffix rules; irregularPlurals overrides the handful of
+// cases in this package's own word lists that those rules get wrong. Custom
+// word lists with other irregular nouns may pluralize incorrectly.
+func (g *Generator) SetPluralNoun(plural bool) {
+	g.pluralNoun = plural
+}
+
 // ExcludeWords removes any adjective or noun that exactly matches one of the
 // given words (case-insensitive, whitespace-trimmed). It leaves the word
 // lists unchanged and returns ErrEmptyWordList if the removal would empty
@@ -205,6 +215,10 @@ func (g *Generator) Generate() string {
 
 // pick returns the words for one name, in output order.
 func (g *Generator) pick() []string {
+	noun := g.nouns[g.rng.Intn(len(g.nouns))]
+	if g.pluralNoun {
+		noun = pluralize(noun)
+	}
 	if g.wordCount == 3 {
 		first := g.adjectives[g.rng.Intn(len(g.adjectives))]
 		second := first
@@ -213,9 +227,43 @@ func (g *Generator) pick() []string {
 				second = g.adjectives[g.rng.Intn(len(g.adjectives))]
 			}
 		}
-		return []string{first, second, g.nouns[g.rng.Intn(len(g.nouns))]}
+		return []string{first, second, noun}
 	}
-	return []string{g.adjectives[g.rng.Intn(len(g.adjectives))], g.nouns[g.rng.Intn(len(g.nouns))]}
+	return []string{g.adjectives[g.rng.Intn(len(g.adjectives))], noun}
+}
+
+// irregularPlurals overrides pluralize's regular suffix rules for the words
+// in this package's own noun lists whose standard English plural doesn't
+// follow them (Greek/Latin borrowings mostly).
+var irregularPlurals = map[string]string{
+	"oasis": "oases",
+}
+
+// pluralize returns the plural form of an English noun using the common
+// regular suffix rules, with irregularPlurals overriding the exceptions.
+func pluralize(word string) string {
+	word = strings.ToLower(strings.TrimSpace(word))
+	if p, ok := irregularPlurals[word]; ok {
+		return p
+	}
+	switch {
+	case strings.HasSuffix(word, "s"), strings.HasSuffix(word, "x"), strings.HasSuffix(word, "z"),
+		strings.HasSuffix(word, "ch"), strings.HasSuffix(word, "sh"):
+		return word + "es"
+	case len(word) > 1 && strings.HasSuffix(word, "y") && !isVowel(word[len(word)-2]):
+		return word[:len(word)-1] + "ies"
+	default:
+		return word + "s"
+	}
+}
+
+// isVowel reports whether b is a lowercase ASCII vowel.
+func isVowel(b byte) bool {
+	switch b {
+	case 'a', 'e', 'i', 'o', 'u':
+		return true
+	}
+	return false
 }
 
 // combinationCount returns the number of distinct names the current word

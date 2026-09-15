@@ -44,6 +44,7 @@ func run(args []string, out io.Writer) error {
 	seed := fs.Int64("seed", 0, "seed for deterministic output (default: time-based)")
 	exclude := fs.String("exclude", "", "comma-separated words to exclude, exact match")
 	excludePattern := fs.String("exclude-pattern", "", "regular expression of words to exclude")
+	plural := fs.Bool("plural", false, "pluralize the trailing noun, e.g. brave-falcons")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -77,6 +78,7 @@ func run(args []string, out io.Writer) error {
 	if err := g.SetWordCount(*words); err != nil {
 		return err
 	}
+	g.SetPluralNoun(*plural)
 
 	if *exclude != "" {
 		if err := g.ExcludeWords(strings.Split(*exclude, ",")...); err != nil {

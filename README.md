@@ -23,6 +23,7 @@ namegen -n 5                     # five names, one per line
 namegen -theme space -words 3    # lunar-stellar-comet
 namegen -style snake -seed 42    # deterministic output
 namegen -unique -n 20            # 20 names, no duplicates
+namegen -plural                  # brave-falcons
 ```
 
 Run `namegen -h` for the full flag list.
@@ -130,6 +131,21 @@ if err := g.ExcludePattern("^q"); err != nil {
 Both calls modify the generator's word lists directly. If a call would
 empty out the adjective or noun list, it returns `ErrEmptyWordList` and
 leaves the lists as they were.
+
+### Plural nouns
+
+Call `SetPluralNoun(true)` to pluralize the trailing noun, e.g.
+`brave-falcons` instead of `brave-falcon`:
+
+```go
+g.SetPluralNoun(true)
+fmt.Println(g.Generate()) // e.g. "brave-falcons"
+```
+
+Pluralization uses standard English suffix rules, with a small list of
+overrides for exceptions in this package's own word lists (`oasis` ->
+`oases`). Custom word lists with other irregular nouns may pluralize
+incorrectly.
 
 ### Three-word names
 

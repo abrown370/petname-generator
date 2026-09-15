@@ -78,6 +78,17 @@ func ExampleGenerator_SetWordCount() {
 	// Output: brave-brave-falcon
 }
 
+func ExampleGenerator_SetPluralNoun() {
+	g, err := NewWithWords([]string{"brave"}, []string{"falcon"})
+	if err != nil {
+		panic(err)
+	}
+
+	g.SetPluralNoun(true)
+	fmt.Println(g.Generate())
+	// Output: brave-falcons
+}
+
 func ExampleGenerator_ExcludeWords() {
 	g, err := NewWithWords([]string{"brave", "wry"}, []string{"falcon"})
 	if err != nil {

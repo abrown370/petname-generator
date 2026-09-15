@@ -110,6 +110,20 @@ func TestRunExcludeWords(t *testing.T) {
 	}
 }
 
+func TestRunPlural(t *testing.T) {
+	var buf bytes.Buffer
+	if err := run([]string{"-plural", "-n", "20", "-seed", "3"}, &buf); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	for _, l := range lines {
+		noun := l[strings.LastIndex(l, "-")+1:]
+		if !strings.HasSuffix(noun, "s") {
+			t.Errorf("name %q has non-pluralized trailing noun %q", l, noun)
+		}
+	}
+}
+
 func TestRunUniqueNoDuplicates(t *testing.T) {
 	var buf bytes.Buffer
 	if err := run([]string{"-unique", "-n", "10", "-seed", "9"}, &buf); err != nil {
