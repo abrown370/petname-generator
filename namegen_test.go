@@ -400,6 +400,76 @@ func TestSetPluralNounWithThreeWords(t *testing.T) {
 	}
 }
 
+func TestSetAlliteration(t *testing.T) {
+	g, err := NewWithWords([]string{"bold", "calm", "red"}, []string{"badger", "cat"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	g.SetAlliteration(true)
+
+	for i := 0; i < 100; i++ {
+		name := g.Generate()
+		if name != "bold-badger" && name != "calm-cat" {
+			t.Fatalf("Generate() = %q, want bold-badger or calm-cat", name)
+		}
+	}
+}
+
+func TestSetAlliterationFallsBackWithoutMatch(t *testing.T) {
+	g, err := NewWithWords([]string{"bold", "calm"}, []string{"otter"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	g.SetAlliteration(true)
+
+	seen := map[string]bool{}
+	for i := 0; i < 200; i++ {
+		seen[g.Generate()] = true
+	}
+	if !seen["bold-otter"] || !seen["calm-otter"] {
+		t.Fatalf("expected both adjectives to appear for an unmatched noun, got %v", seen)
+	}
+}
+
+func TestSetAlliterationWithThreeWords(t *testing.T) {
+	g, err := NewWithWords([]string{"bold", "brave", "calm"}, []string{"badger"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	if err := g.SetWordCount(3); err != nil {
+		t.Fatalf("SetWordCount(3) = %v", err)
+	}
+	g.SetAlliteration(true)
+
+	for i := 0; i < 50; i++ {
+		name := g.Generate()
+		if name != "bold-brave-badger" && name != "brave-bold-badger" {
+			t.Fatalf("Generate() = %q, want bold and brave around badger", name)
+		}
+	}
+}
+
+func TestUniqueWithAlliteration(t *testing.T) {
+	g, err := NewWithWords([]string{"bold", "brave", "calm"}, []string{"badger", "cat", "dog"})
+	if err != nil {
+		t.Fatalf("NewWithWords() = %v", err)
+	}
+	g.SetAlliteration(true)
+
+	// badger: bold, brave. cat: calm. dog has no match, so all three.
+	const reachable = 6
+	names, err := g.Unique(reachable)
+	if err != nil {
+		t.Fatalf("Unique(%d) = %v, want nil", reachable, err)
+	}
+	if len(names) != reachable {
+		t.Fatalf("Unique(%d) returned %d names", reachable, len(names))
+	}
+	if _, err := g.Unique(reachable + 1); !errors.Is(err, ErrNotEnoughCombinations) {
+		t.Fatalf("Unique(%d) error = %v, want ErrNotEnoughCombinations", reachable+1, err)
+	}
+}
+
 func TestDefaultWordListsAreValid(t *testing.T) {
 	if len(DefaultAdjectives) == 0 || len(DefaultNouns) == 0 {
 		t.Fatal("default word lists must not be empty")

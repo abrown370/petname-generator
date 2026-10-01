@@ -45,6 +45,7 @@ func run(args []string, out io.Writer) error {
 	exclude := fs.String("exclude", "", "comma-separated words to exclude, exact match")
 	excludePattern := fs.String("exclude-pattern", "", "regular expression of words to exclude")
 	plural := fs.Bool("plural", false, "pluralize the trailing noun, e.g. brave-falcons")
+	alliterate := fs.Bool("alliterate", false, "prefer adjectives starting with the noun's letter, e.g. bold-badger")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -79,6 +80,7 @@ func run(args []string, out io.Writer) error {
 		return err
 	}
 	g.SetPluralNoun(*plural)
+	g.SetAlliteration(*alliterate)
 
 	if *exclude != "" {
 		if err := g.ExcludeWords(strings.Split(*exclude, ",")...); err != nil {

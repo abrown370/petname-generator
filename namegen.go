@@ -58,7 +58,8 @@ type Generator struct {
 	separator  string
 	wordCount  int
 	pluralNoun bool
-	rng        *rand.Rand
+	alliterate bool
+	rng       *rand.Rand
 }
 
 // New returns a Generator backed by the built-in DefaultAdjectives and
@@ -153,6 +154,15 @@ func (g *Generator) SetPluralNoun(plural bool) {
 	g.pluralNoun = plural
 }
 
+// SetAlliteration makes future names prefer adjectives that start with the
+// same letter as the noun, e.g. "bold-badger". A noun with no matching
+// adjective in the list falls back to the full adjective list, so names are
+// not all alliterative unless the word lists cover every initial. In
+// three-word names both adjectives come from the matching set.
+func (g *Generator) SetAlliteration(on bool) {
+	g.alliterate = on
+}
+
 // ExcludeWords removes any adjective or noun that exactly matches one of the
 // given words (case-insensitive, whitespace-trimmed). It leaves the word
 // lists unchanged and returns ErrEmptyWordList if the removal would empty
@@ -215,21 +225,48 @@ func (g *Generator) Generate() string {
 
 // pick returns the words for one name, in output order.
 func (g *Generator) pick() []string {
-	noun := g.nouns[g.rng.Intn(len(g.nouns))]
+	base := g.nouns[g.rng.Intn(len(g.nouns))]
+	noun := base
 	if g.pluralNoun {
 		noun = pluralize(noun)
 	}
+	adjs := g.adjectivesFor(base)
 	if g.wordCount == 3 {
-		first := g.adjectives[g.rng.Intn(len(g.adjectives))]
+		first := adjs[g.rng.Intn(len(adjs))]
 		second := first
-		if len(g.adjectives) > 1 {
+		if len(adjs) > 1 {
 			for second == first {
-				second = g.adjectives[g.rng.Intn(len(g.adjectives))]
+				second = adjs[g.rng.Intn(len(adjs))]
 			}
 		}
 		return []string{first, second, noun}
 	}
-	return []string{g.adjectives[g.rng.Intn(len(g.adjectives))], noun}
+	return []string{adjs[g.rng.Intn(len(adjs))], noun}
+}
+
+// adjectivesFor returns the adjectives eligible to go with noun. Normally
+// that is the whole list. With alliteration on it is the adjectives sharing
+// noun's first letter, or the whole list when none do, so a noun with no
+// match still produces a name instead of failing.
+func (g *Generator) adjectivesFor(noun string) []string {
+	if !g.alliterate {
+		return g.adjectives
+	}
+	initial := firstLetter(noun)
+	matches := filterWords(g.adjectives, func(a string) bool { return firstLetter(a) == initial })
+	if len(matches) == 0 {
+		return g.adjectives
+	}
+	return matches
+}
+
+// firstLetter returns the first rune of w after trimming and lowercasing, or
+// 0 for an empty string.
+func firstLetter(w string) rune {
+	for _, r := range strings.ToLower(strings.TrimSpace(w)) {
+		return r
+	}
+	return 0
 }
 
 // irregularPlurals overrides pluralize's regular suffix rules for the words
@@ -269,14 +306,19 @@ func isVowel(b byte) bool {
 // combinationCount returns the number of distinct names the current word
 // lists and word count can produce.
 func (g *Generator) combinationCount() int {
-	if g.wordCount == 3 {
-		pairs := 1
-		if len(g.adjectives) > 1 {
-			pairs = len(g.adjectives) * (len(g.adjectives) - 1)
+	total := 0
+	for _, noun := range g.nouns {
+		n := len(g.adjectivesFor(noun))
+		switch {
+		case g.wordCount != 3:
+			total += n
+		case n > 1:
+			total += n * (n - 1)
+		default:
+			total++
 		}
-		return pairs * len(g.nouns)
 	}
-	return len(g.adjectives) * len(g.nouns)
+	return total
 }
 
 // GenerateN returns count random names. Names may repeat; use Unique if

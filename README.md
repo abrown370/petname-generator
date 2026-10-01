@@ -147,6 +147,19 @@ overrides for exceptions in this package's own word lists (`oasis` ->
 `oases`). Custom word lists with other irregular nouns may pluralize
 incorrectly.
 
+### Alliteration
+
+`SetAlliteration(true)` picks adjectives that start with the same letter as
+the noun, e.g. `bold-badger`. If no adjective in the list matches a noun's
+first letter, that noun is paired with any adjective, so with small word
+lists some names will still not alliterate. `Unique` counts only the pairs
+that can actually be produced. The CLI flag is `-alliterate`.
+
+```go
+g.SetAlliteration(true)
+fmt.Println(g.Generate()) // e.g. "bold-badger"
+```
+
 ### Three-word names
 
 Call `SetWordCount(3)` to get an extra adjective in front of the noun, e.g.
